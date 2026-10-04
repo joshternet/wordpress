@@ -1,0 +1,7 @@
+/vendor/
+.phpunit.result.cache
+/tests/wordpress/
+.env
+.wp-admin-pass
+*.sql
+.DS_Store
