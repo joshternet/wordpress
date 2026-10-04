@@ -14,5 +14,7 @@
 - PHPUnit coverage for all button faces and path-based Multisite origin ownership.
 - Homelab Multisite testbed at `wp-multi.barf.lan`.
 - `readme.txt` Contributors set to wordpress.org slug `thewoollybully`.
+- Composer lock pinned to PHP 7.4 platform so CI on 7.4/8.2 can install.
+- PHPCompatibility (PHPCS) for PHP 7.4+; homelab WordPress stacks run PHP 7.4.
 - Uninstall cleanup for options and button cache.
 - PHPCS, PHPUnit, and CI harness.

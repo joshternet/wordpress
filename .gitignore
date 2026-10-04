@@ -1,6 +1,9 @@
 /vendor/
 .phpunit.result.cache
 /tests/wordpress/
+/.wp-tests/
+/.wp-core/
+/.tmp/
 .env
 .wp-admin-pass
 *.sql

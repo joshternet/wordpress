@@ -22,6 +22,8 @@ composer test:multisite
 
 Stack lives on `barf.lan` at `/srv/docker/wordpress` (Docker WordPress + MariaDB, NPM, AdGuard).
 
+PHP runtime for both homelab stacks is **PHP 7.4** (`wordpress:php7.4-apache`, last official Docker Hub tag that still ships 7.4). Site files stay on the named volume (current WordPress), so we exercise the declared minimum PHP against a modern WP install. Official Docker Hub no longer publishes WordPress 6.8 + PHP 7.4 images.
+
 ```bash
 # DNS
 dig @192.168.1.164 wp.barf.lan +short

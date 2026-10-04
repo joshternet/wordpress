@@ -25,6 +25,8 @@
 		<exclude name="WordPress.PHP.YodaConditions"/>
 	</rule>
 
+	<rule ref="PHPCompatibility"/>
+
 	<config name="minimum_supported_wp_version" value="6.0"/>
 	<config name="testVersion" value="7.4-"/>
 </ruleset>
