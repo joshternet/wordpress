@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 0.1.1, no leading v)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Build zip only; skip creating a GitHub Release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build WordPress.org zip and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: ver
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME}"
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version ${VERSION}"
+
+      - name: Verify version in plugin files
+        run: |
+          chmod +x bin/verify-version.sh bin/build-dist-zip.sh
+          bin/verify-version.sh "${{ steps.ver.outputs.version }}"
+
+      - name: Build WordPress.org zip
+        run: bin/build-dist-zip.sh "${{ steps.ver.outputs.version }}"
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: joshternet-${{ steps.ver.outputs.version }}
+          path: dist/joshternet-${{ steps.ver.outputs.version }}.zip
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Joshternet ${{ steps.ver.outputs.version }}
+          body: |
+            WordPress.org install zip for **${{ steps.ver.outputs.version }}**.
+
+            Attach `joshternet-${{ steps.ver.outputs.version }}.zip` for directory review/submission or Plugins → Add New → Upload. Expands to `joshternet/`.
+          files: dist/joshternet-${{ steps.ver.outputs.version }}.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

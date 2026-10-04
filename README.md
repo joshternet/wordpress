@@ -69,6 +69,10 @@ That is deliberate. If the protocol can stay boring, it probably should.
 
 This is pre-release code. The implementation has been reviewed against RFC-JOSH-0001 and RFC-JOSH-0002 and is being prepared for a public repository. Host compatibility claims will be added only after the repository test matrix passes against the relevant WordPress and hosting environments.
 
+## Releases
+
+Version is controlled in-repo (`joshternet.php` + `readme.txt` Stable tag). GitHub Actions workflow **Release** builds one WordPress.org install zip (`joshternet-<version>.zip`) on `v*` tags or manual **workflow_dispatch** (optional dry-run). Full steps: `CONTRIBUTING.md`.
+
 ## Development rule
 
 Protocol behavior comes from the Joshternet specifications. A plugin change should not quietly invent new protocol behavior because it seems convenient in WordPress. If the protocol needs to change, change the specification first and then change the implementation.

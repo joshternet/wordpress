@@ -9,7 +9,11 @@ composer install
 composer phpcs
 composer test
 composer test:multisite
+bin/verify-version.sh 0.1.0
+bin/build-dist-zip.sh
 ```
+
+WordPress.org packaging (GitHub Actions **Release** workflow) is documented in `CONTRIBUTING.md`.
 
 - PHP syntax on every PHP file.
 - WordPress Coding Standards (PHPCS / WPCS).

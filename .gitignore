@@ -8,3 +8,6 @@
 .wp-admin-pass
 *.sql
 .DS_Store
+/joshternet-*.zip
+/dist/
+/.dist-stage/

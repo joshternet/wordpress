@@ -25,3 +25,29 @@ composer test:multisite
 ```
 
 `composer test` / `composer test:multisite` need the WordPress test library from `bin/install-wp-tests.sh`. Homelab checks for `wp.barf.lan` and `wp-multi.barf.lan` are in `docs/TESTING.md`.
+
+## Releases (WordPress.org zip)
+
+Version lives in three places and must match:
+
+- `joshternet.php` plugin header `Version:`
+- `JOSHTERNET_VERSION` in `joshternet.php`
+- `Stable tag:` in `readme.txt`
+
+Each release attaches one artifact: `joshternet-<version>.zip` — the installable plugin for wordpress.org review/submission and Plugins → Add New → Upload. Built from `.distignore`; expands to slug folder `joshternet/` (includes screenshots and button assets; excludes `vendor/`, tests, Composer files, and repo docs).
+
+Launch flow:
+
+1. Bump version (optional helper): `bin/set-version.sh 0.1.1`
+2. Update `CHANGELOG.md` and `readme.txt` `== Changelog ==`, commit, push; wait for CI green.
+3. Publish either way:
+   - **Tag (preferred):** `git tag v0.1.1 && git push origin v0.1.1`
+   - **Actions UI:** Run workflow **Release**, enter `0.1.1` (dry-run builds the zip without publishing)
+
+Local build:
+
+```bash
+bin/build-dist-zip.sh
+# or
+bin/build-dist-zip.sh 0.1.0
+```

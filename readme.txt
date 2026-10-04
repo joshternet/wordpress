@@ -85,6 +85,16 @@ Add `[joshternet_button]` to a post or page (Shortcode block works). Images are 
 1. Settings > Joshternet participation and identity options.
 2. Optional `[joshternet_button]` shortcode showing Join the Joshternet for an origin that is not yet a registry member.
 
+== License and authorship ==
+
+Copyright 2026 Joshua Morris.
+
+This plugin is licensed under GPLv2 or later. The full GPL version 2 text is in LICENSE.
+
+The Joshternet specifications (RFC-JOSH-0001, RFC-JOSH-0002) are separate works authored by Joshua Morris for the Joshternet and licensed under CC BY 4.0. This plugin implements those specifications; it does not relicense them under the GPL, and the specification licenses do not relicense this plugin.
+
+The 88x31 PNGs in assets/buttons/ are Joshternet button artwork authored by Joshua Morris for the Joshternet project. For distribution with this plugin they are licensed under GPLv2 or later, the same as the plugin code.
+
 == Changelog ==
 
 = 0.1.0 =

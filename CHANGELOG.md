@@ -16,5 +16,7 @@
 - `readme.txt` Contributors set to wordpress.org slug `thewoollybully`.
 - Composer lock pinned to PHP 7.4 platform so CI on 7.4/8.2 can install.
 - PHPCompatibility (PHPCS) for PHP 7.4+; homelab WordPress stacks run PHP 7.4.
+- License/authorship note moved into `readme.txt`; `NOTICE.md` omitted from the directory zip.
+- Release workflow builds one WordPress.org install zip (`bin/build-dist-zip.sh`, `bin/set-version.sh`).
 - Uninstall cleanup for options and button cache.
 - PHPCS, PHPUnit, and CI harness.
