@@ -4,7 +4,7 @@ Tags: joshternet, well-known, indieweb, identity
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -34,7 +34,7 @@ Joshness is declared, never derived.
 
 The declaration endpoint is served through WordPress. The plugin does not create a physical `.well-known` file, change Apache or Nginx configuration, add telemetry, register accounts, or require JavaScript.
 
-Optional shortcode `[joshternet_button]`: WordPress calls the Joshternet registry service at `https://joshternet.org/api/button-state` for this origin's membership state, caches the result, and displays a bundled local 88x31 image. No remote script or remote image is loaded on the page.
+Optional shortcode `[joshternet_button]`: WordPress may query the Joshternet Button State service for this origin, caches the result locally, and displays a bundled 88x31 image. See External services. No remote script or remote image is loaded on the page.
 
 = Multisite =
 
@@ -51,6 +51,28 @@ A site published below the origin root may require hosting configuration to rout
 3. Enable Joshternet participation.
 4. Choose whether to declare Josh identity.
 5. Verify the public endpoint shown on the settings page.
+
+== External services ==
+
+The plugin's primary function is publishing a Joshternet declaration at `/.well-known/josh`. Publishing that declaration does not contact Joshternet.org or any other external service.
+
+The optional `[joshternet_button]` shortcode uses the Joshternet Button State service:
+
+https://joshternet.org/api/button-state
+
+When the shortcode is rendered and there is no usable cached result, this site's WordPress server sends an HTTPS GET request to that URL. The request includes this site's normalized website origin as the `origin` query parameter, for example `https://example.com`. The User-Agent identifies the plugin version and repeats that same origin. The service uses the origin to determine the site's state in the public Joshternet registry and returns the appropriate button information. Ordinary connection metadata such as the WordPress server's IP address can be visible to the service.
+
+The plugin does not send WordPress usernames, email addresses, posts, comments, visitor identities, cookies, analytics identifiers, the current visitor's page URL, or the contents of `/.well-known/josh` to the Button State service.
+
+A successful result is cached locally in WordPress for up to 6 hours. A failed or invalid lookup is cached for 15 minutes so an outage does not contact the service on every page view. If the service is unavailable or its response cannot be validated, the shortcode displays nothing.
+
+The button images are bundled with the plugin. The shortcode does not load a remote image or remote JavaScript.
+
+Joshternet Terms of Service:
+https://joshternet.org/terms/
+
+Joshternet Privacy Policy:
+https://joshternet.org/privacy/
 
 == Frequently Asked Questions ==
 
@@ -74,7 +96,7 @@ The declaration belongs to an origin. Subdomain and mapped-domain sites can publ
 
 Publishing `/.well-known/josh` does not call joshternet.org. There is no telemetry or registration.
 
-The optional `[joshternet_button]` shortcode asks the Joshternet registry API for this origin's button state, caches the answer, and serves a bundled local image. If the registry cannot be read, the shortcode outputs nothing.
+The optional `[joshternet_button]` shortcode is the only feature that contacts Joshternet.org. See **External services** for when that request happens, what normalized website origin is sent, how long the result is cached, and the Joshternet Terms of Service and Privacy Policy.
 
 = How do I show the Joshternet button? =
 
@@ -96,6 +118,14 @@ The Joshternet specifications (RFC-JOSH-0001, RFC-JOSH-0002) are separate works 
 The 88x31 PNGs in assets/buttons/ are Joshternet button artwork authored by Joshua Morris for the Joshternet project. For distribution with this plugin they are licensed under GPLv2 or later, the same as the plugin code.
 
 == Changelog ==
+
+= 0.1.1 =
+* Documented the optional Joshternet Button State external service in readme, settings, and the Privacy Policy Guide.
+* Linked Joshternet Terms of Service and Privacy Policy.
+* Hardened the Button State HTTP request and expanded external-service and cache tests.
+* Cache a successful Button State for 6 hours and a failed lookup for 15 minutes.
+* Reconciled WordPress compatibility CI with the published Tested up to claim.
+* Path-based Multisite shortcode images load from origin-root `wp-content/plugins/`, not `/{blog}/wp-content/`.
 
 = 0.1.0 =
 * Initial pre-release implementation.

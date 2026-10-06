@@ -19,11 +19,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Registry-backed Joshternet button shortcode.
  */
 final class Joshternet_Button {
-	const SHORTCODE        = 'joshternet_button';
-	const TRANSIENT_KEY    = 'joshternet_button_state';
-	const CACHE_TTL        = 900;
-	const API_TIMEOUT      = 5;
-	const BUTTON_STATE_API = 'https://joshternet.org/api/button-state';
+	const SHORTCODE          = 'joshternet_button';
+	const TRANSIENT_KEY      = 'joshternet_button_state';
+	const SUCCESS_CACHE_TTL  = 6 * HOUR_IN_SECONDS;
+	const FAILURE_CACHE_TTL  = 15 * MINUTE_IN_SECONDS;
+	const API_TIMEOUT        = 5;
+	const API_REDIRECTION    = 0;
+	const API_RESPONSE_BYTES = 16384;
+	const BUTTON_STATE_API   = 'https://joshternet.org/api/button-state';
 
 	/**
 	 * Register shortcode and cache invalidation.
@@ -64,7 +67,7 @@ final class Joshternet_Button {
 			return '';
 		}
 
-		$image_url = plugins_url( 'assets/buttons/' . $filename, JOSHTERNET_PLUGIN_FILE );
+		$image_url = self::bundled_image_url( $filename );
 		$href      = $state['href'];
 		$alt       = $state['alt'];
 		$label     = $state['linkLabel'];
@@ -98,11 +101,11 @@ final class Joshternet_Button {
 
 		$fetched = self::fetch_button_state();
 		if ( null === $fetched ) {
-			set_transient( self::TRANSIENT_KEY, '', self::CACHE_TTL );
+			set_transient( self::TRANSIENT_KEY, '', self::FAILURE_CACHE_TTL );
 			return null;
 		}
 
-		set_transient( self::TRANSIENT_KEY, $fetched, self::CACHE_TTL );
+		set_transient( self::TRANSIENT_KEY, $fetched, self::SUCCESS_CACHE_TTL );
 		return $fetched;
 	}
 
@@ -135,9 +138,12 @@ final class Joshternet_Button {
 	}
 
 	/**
-	 * Fetch button state from the Joshternet registry API.
+	 * Fetch button state from the Joshternet Button State service.
 	 *
-	 * External boundary: joshternet.org registry. Frontend assets stay local.
+	 * External boundary: fixed HTTPS joshternet.org Button State API. The
+	 * request sends this site's normalized website origin. The User-Agent
+	 * identifies this plugin and repeats that origin; it does not include
+	 * visitor or WordPress user data. Frontend assets stay local.
 	 *
 	 * @return array{state:string,href:string,alt:string,linkLabel:string}|null
 	 */
@@ -157,8 +163,11 @@ final class Joshternet_Button {
 		$response = wp_remote_get(
 			$url,
 			array(
-				'timeout' => self::API_TIMEOUT,
-				'headers' => array(
+				'timeout'             => self::API_TIMEOUT,
+				'redirection'         => self::API_REDIRECTION,
+				'limit_response_size' => self::API_RESPONSE_BYTES,
+				'user-agent'          => 'Joshternet/' . JOSHTERNET_VERSION . '; ' . $origin,
+				'headers'             => array(
 					'Accept' => 'application/json',
 				),
 			)
@@ -235,6 +244,37 @@ final class Joshternet_Button {
 		$host = strtolower( (string) $parts['host'] );
 
 		return 'joshternet.org' === $host || 'www.joshternet.org' === $host;
+	}
+
+	/**
+	 * Public URL for a bundled button PNG.
+	 *
+	 * Path-based Multisite children share the origin's plugin files at
+	 * /wp-content/plugins/. Their siteurl includes the blog path, so
+	 * plugins_url() can emit /site2/wp-content/plugins/... which does not
+	 * exist. Rebase those URLs onto the origin-root plugin path.
+	 *
+	 * @param string $filename Bundled PNG filename.
+	 * @return string
+	 */
+	private static function bundled_image_url( $filename ) {
+		$url = plugins_url( 'assets/buttons/' . $filename, JOSHTERNET_PLUGIN_FILE );
+
+		if ( ! Joshternet_Origin::shares_origin_with_main_site() ) {
+			return $url;
+		}
+
+		$origin     = Joshternet_Origin::from_url( get_home_url( get_main_site_id(), '/' ) );
+		$parts      = wp_parse_url( $url );
+		$path       = isset( $parts['path'] ) && is_string( $parts['path'] ) ? $parts['path'] : '';
+		$marker     = '/wp-content/plugins/';
+		$marker_pos = strpos( $path, $marker );
+
+		if ( '' === $origin || false === $marker_pos ) {
+			return $url;
+		}
+
+		return $origin . substr( $path, $marker_pos );
 	}
 
 	/**

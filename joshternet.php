@@ -3,7 +3,7 @@
  * Plugin Name:       Joshternet
  * Plugin URI:        https://joshternet.org/
  * Description:       Let a WordPress site declare itself part of the Joshternet at /.well-known/josh.
- * Version:           0.1.0
+ * Version:           0.1.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Joshua Morris
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'JOSHTERNET_VERSION', '0.1.0' );
+define( 'JOSHTERNET_VERSION', '0.1.1' );
 define( 'JOSHTERNET_PLUGIN_FILE', __FILE__ );
 
 require_once __DIR__ . '/includes/class-joshternet-origin.php';

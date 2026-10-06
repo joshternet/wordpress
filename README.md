@@ -46,9 +46,9 @@ If a WordPress site itself is published below the origin root, the plugin warns 
 
 ## Button shortcode
 
-`[joshternet_button]` calls `https://joshternet.org/api/button-state` from WordPress (not the browser), caches the result, then serves a bundled 88x31 image from the plugin. Page HTML does not load a remote script or remote image. Button links are limited to HTTPS `joshternet.org` hosts. If the registry is unreachable or returns an unexpected payload, the shortcode renders nothing.
+`[joshternet_button]` is optional. When it needs a button state and there is no usable local cache, WordPress (not the visitor's browser) queries the Joshternet Button State service at `https://joshternet.org/api/button-state` with this site's normalized website origin. A successful result is cached locally for up to 6 hours; a failed lookup is cached for 15 minutes. A bundled 88x31 image is then served from the plugin (origin-root `wp-content/plugins/`, including on path-based Multisite). Page HTML does not load a remote script or remote image. Button links are limited to HTTPS `joshternet.org` hosts. If the registry is unreachable or returns an unexpected payload, the shortcode renders nothing.
 
-Publishing `/.well-known/josh` itself still does not call joshternet.org.
+Publishing `/.well-known/josh` itself still does not call joshternet.org. Terms and Privacy: `https://joshternet.org/terms/` and `https://joshternet.org/privacy/`.
 
 ## What it does not do
 

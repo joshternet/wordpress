@@ -21,6 +21,8 @@ class Joshternet_Multisite_Test extends WP_UnitTestCase {
 		if ( ! is_multisite() ) {
 			$this->markTestSkipped( 'Multisite only.' );
 		}
+		$_SERVER['REQUEST_URI']    = '/';
+		$_SERVER['REQUEST_METHOD'] = 'GET';
 	}
 
 	/**
@@ -77,8 +79,78 @@ class Joshternet_Multisite_Test extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		restore_current_blog();
-		unset( $_SERVER['REQUEST_URI'], $_SERVER['REQUEST_METHOD'] );
+		$_SERVER['REQUEST_URI']    = '/';
+		$_SERVER['REQUEST_METHOD'] = 'GET';
 
 		$this->assertSame( '', $output );
+	}
+
+	/**
+	 * Path-subsite button images must not use /{blog}/wp-content/plugin URLs.
+	 *
+	 * Network plugins live at origin-root wp-content. WP_PLUGIN_URL on a path
+	 * child is built from that blog's siteurl, which prefixes the blog path
+	 * and 404s the PNG. Simulate that plugins_url shape, then assert the
+	 * shortcode rebases onto the origin.
+	 *
+	 * @return void
+	 */
+	public function test_button_image_url_uses_origin_plugin_path() {
+		$blog_id = self::factory()->blog->create(
+			array(
+				'path' => '/site2/',
+			)
+		);
+
+		$stub = array(
+			'state'     => 'join',
+			'alt'       => 'Join the Joshternet',
+			'linkLabel' => 'Join the Joshternet',
+			'href'      => 'https://joshternet.org/implement/',
+		);
+		add_filter(
+			'pre_transient_' . Joshternet_Button::TRANSIENT_KEY,
+			static function () use ( $stub ) {
+				return $stub;
+			}
+		);
+		add_filter( 'plugins_url', array( $this, 'prefix_plugins_url_with_site2_path' ), 10, 1 );
+
+		switch_to_blog( $blog_id );
+		$html = Joshternet_Button::render_shortcode();
+		restore_current_blog();
+
+		remove_filter( 'plugins_url', array( $this, 'prefix_plugins_url_with_site2_path' ), 10 );
+
+		$this->assertNotSame( '', $html );
+		$this->assertFalse( strpos( $html, '/site2/wp-content/' ) );
+		$this->assertNotFalse( strpos( $html, '/wp-content/plugins/' ) );
+		$this->assertNotFalse( strpos( $html, 'join-the-joshternet.png' ) );
+	}
+
+	/**
+	 * Simulate WP_PLUGIN_URL built from a path-based subsite siteurl.
+	 *
+	 * External boundary: WordPress defines plugin constants from the current
+	 * blog's siteurl for that request; this filter reproduces that URL shape.
+	 *
+	 * @param string $url Plugin URL from plugins_url().
+	 * @return string
+	 */
+	public function prefix_plugins_url_with_site2_path( $url ) {
+		if ( ! Joshternet_Origin::shares_origin_with_main_site() ) {
+			return $url;
+		}
+
+		$parts = wp_parse_url( $url );
+		if ( empty( $parts['scheme'] ) || empty( $parts['host'] ) || empty( $parts['path'] ) ) {
+			return $url;
+		}
+
+		if ( 0 === strpos( (string) $parts['path'], '/site2/' ) ) {
+			return $url;
+		}
+
+		return $parts['scheme'] . '://' . $parts['host'] . '/site2' . $parts['path'];
 	}
 }

@@ -20,3 +20,5 @@ SECURITY.md
 NOTICE.md
 README.md
 CHANGELOG.md
+*.code-workspace
+

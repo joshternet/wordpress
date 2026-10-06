@@ -11,3 +11,4 @@
 /joshternet-*.zip
 /dist/
 /.dist-stage/
+*.code-workspace

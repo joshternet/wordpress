@@ -23,7 +23,40 @@ final class Joshternet_Admin {
 	 */
 	public static function register() {
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
+		add_action( 'admin_init', array( __CLASS__, 'register_privacy_policy_content' ) );
 		add_action( 'admin_menu', array( __CLASS__, 'add_settings_page' ) );
+	}
+
+	/**
+	 * Contribute suggested Privacy Policy Guide text.
+	 *
+	 * This is suggested language for the site's own privacy policy. It is not
+	 * legal advice and does not fetch Joshternet policy pages at runtime.
+	 *
+	 * @return void
+	 */
+	public static function register_privacy_policy_content() {
+		if ( ! function_exists( 'wp_add_privacy_policy_content' ) ) {
+			return;
+		}
+
+		$privacy_url = 'https://joshternet.org/privacy/';
+
+		$content  = '<p class="privacy-policy-tutorial">' . esc_html__( 'The following is suggested text you may include in your site Privacy Policy. It is not legal advice.', 'joshternet' ) . '</p>';
+		$content .= '<p><strong class="privacy-policy-tutorial">' . esc_html__( 'Suggested text:', 'joshternet' ) . '</strong></p>';
+		$content .= '<p>' . esc_html__( 'The Joshternet declaration at /.well-known/josh does not send visitor data to Joshternet.', 'joshternet' ) . '</p>';
+		$content .= '<p>' . esc_html__( 'If this site uses the optional [joshternet_button] shortcode, the site\'s WordPress server contacts the Joshternet Button State service to determine which official Joshternet button applies to this origin. That request includes this site\'s normalized public origin. A successful result may be cached locally in WordPress for up to 6 hours. A failed lookup may be cached for 15 minutes.', 'joshternet' ) . '</p>';
+		$content .= '<p>' . esc_html__( 'The shortcode uses local button artwork bundled with the plugin. Ordinary visitors do not load remote Joshternet scripts or button images through the shortcode.', 'joshternet' ) . '</p>';
+		$content .= '<p>' . sprintf(
+			/* translators: %1$s: Joshternet privacy policy URL. */
+			__( 'The Joshternet Privacy Policy is available at <a href="%1$s">%1$s</a>.', 'joshternet' ),
+			esc_url( $privacy_url )
+		) . '</p>';
+
+		wp_add_privacy_policy_content(
+			__( 'Joshternet', 'joshternet' ),
+			wp_kses_post( wpautop( $content, false ) )
+		);
 	}
 
 	/**
@@ -171,10 +204,25 @@ final class Joshternet_Admin {
 
 				<h2><?php echo esc_html__( 'Button shortcode', 'joshternet' ); ?></h2>
 				<p>
+					<?php echo esc_html__( 'The [joshternet_button] shortcode is optional. Place it in a post or page only if you want to show the official Joshternet button.', 'joshternet' ); ?>
+				</p>
+				<p>
+					<?php echo esc_html__( 'When that shortcode needs a button state and there is no usable local cache, WordPress contacts the Joshternet Button State service and sends this site\'s normalized website origin. A successful result is cached locally for up to 6 hours. A failed lookup is cached for 15 minutes. The image is bundled with the plugin; the shortcode does not load a remote image or remote script. Publishing /.well-known/josh does not make this request.', 'joshternet' ); ?>
+				</p>
+				<p>
 					<?php
-					echo esc_html__(
-						'Place [joshternet_button] in a post or page. WordPress looks up this origin in the Joshternet registry, then serves a bundled 88x31 image. No remote script is loaded.',
-						'joshternet'
+					echo wp_kses(
+						sprintf(
+							/* translators: 1: Joshternet privacy policy URL, 2: Joshternet terms URL. */
+							__( '<a href="%1$s">Joshternet Privacy Policy</a> and <a href="%2$s">Joshternet Terms of Service</a>.', 'joshternet' ),
+							esc_url( 'https://joshternet.org/privacy/' ),
+							esc_url( 'https://joshternet.org/terms/' )
+						),
+						array(
+							'a' => array(
+								'href' => true,
+							),
+						)
 					);
 					?>
 				</p>

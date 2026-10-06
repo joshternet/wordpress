@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.1
+
+- Documented the optional Button State external service in `readme.txt`, the settings screen, and the WordPress Privacy Policy Guide.
+- Linked Joshternet Terms of Service and Privacy Policy.
+- Hardened the Button State HTTP request (`redirection` 0, 16 KB response limit, plugin User-Agent).
+- Cache a successful Button State for 6 hours and a failed lookup for 15 minutes.
+- Expanded request, cache, failure, declaration-isolation, admin, and readme tests.
+- CI now tests WordPress 6.0 and 7.1.2 on PHP 7.4, plus WordPress 7.1.2 on PHP 8.2.
+- Path-based Multisite button images use the origin-root plugin URL, not `/{blog}/wp-content/`.
+- Homelab button checks use the site home; non-canonical `/.well-known/josh` URLs must 404 with no content redirect.
+- Removed the test-only runtime switch that skipped well-known endpoint headers and exit during PHPUnit.
+
 ## 0.1.0
 
 - Publish RFC-JOSH-0002 version 1 at `/.well-known/josh`.

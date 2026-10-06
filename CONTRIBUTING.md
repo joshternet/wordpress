@@ -8,7 +8,7 @@ Protocol changes belong in the Joshternet specification first. A pull request sh
 
 Please keep a few rules in mind:
 
-- Do not add telemetry, analytics, advertising, or silent outbound requests. The `[joshternet_button]` shortcode may make a cached lookup to the Joshternet registry API when rendered; that is the only outbound call, and it is not automatic sitewide traffic.
+- Do not add telemetry, analytics, advertising, or silent outbound requests. The `[joshternet_button]` shortcode may make a cached lookup to the Joshternet Button State service when rendered; that is the only outbound call, and it is not automatic sitewide traffic.
 - Do not infer whether somebody is a Josh. Joshness is declared, never derived.
 - Do not add filesystem or web-server configuration when a WordPress API can do the job.
 - Keep compatibility with managed hosting in mind. WordPress.com and WP Engine are explicit test targets.
