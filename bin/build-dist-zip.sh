@@ -100,5 +100,7 @@ if unzip -l "$ZIP" | grep -Eiq "(^|/)(vendor/|tests/|bin/|composer\.(json|lock)|
 	exit 1
 fi
 
+python3 "$ROOT/bin/release-tools.py" extract "$ZIP" --version "$VERSION" --destination "$STAGE/validated"
+
 echo "Built $ZIP"
 ls -lh "$ZIP"

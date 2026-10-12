@@ -1,10 +1,12 @@
 # Joshternet for WordPress
 
-The Joshternet started as a weird little web experiment about finding Joshes on the independent web, but the useful part is the protocol underneath it. A website should be able to say for itself that it is part of the network. This plugin gives WordPress that one small capability.
+The Joshternet is an open network for independent websites. Everyone is welcome: Joshes and non-Joshes are equal participants, with the same standing in the network. Being a Josh is not a requirement for joining.
+
+A website should be able to say for itself that it is part of the network. This plugin gives WordPress that one small capability.
 
 When enabled, the plugin publishes a JSON declaration at `/.well-known/josh` following [RFC-JOSH-0002](https://github.com/joshternet/spec/blob/main/rfcs/0002-well-known-josh.md). It does not create a physical `.well-known` file, rewrite your server configuration, phone home, add analytics, or try to turn WordPress into something else. WordPress already knows how to answer web requests. This plugin teaches it one more.
 
-Being part of the Joshternet does not automatically make anyone a Josh. [RFC-JOSH-0001](https://github.com/joshternet/spec/blob/main/rfcs/0001-josh-identity.md) keeps identity separate from participation. A participant can affirm Josh identity, explicitly decline it, or make no identity declaration at all. Joshness is declared, never derived.
+Being part of the Joshternet does not automatically make anyone a Josh. [RFC-JOSH-0001](https://github.com/joshternet/spec/blob/main/rfcs/0001-josh-identity.md) keeps identity separate from participation. A participant can affirm Josh identity, explicitly decline it, or make no identity declaration at all. Affirming, declining, or leaving Josh identity undeclared does not change your status in the network. Joshness is declared, never derived.
 
 ## What it publishes
 

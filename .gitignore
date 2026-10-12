@@ -12,3 +12,5 @@
 /dist/
 /.dist-stage/
 *.code-workspace
+/.release/
+__pycache__/

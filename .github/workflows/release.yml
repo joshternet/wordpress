@@ -2,74 +2,258 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to release (e.g. 0.1.1, no leading v)'
+      mode:
+        description: 'Rehearse, publish approved 0.1.1, or recover a tagged release'
+        type: choice
+        options: [rehearse, publish-approved-0.1.1, retry-tag-release]
+        default: rehearse
         required: true
+      version:
+        description: 'Numeric X.Y.Z version (no v prefix)'
         type: string
-      dry_run:
-        description: 'Build zip only; skip creating a GitHub Release'
-        required: false
-        type: boolean
-        default: false
+        default: '0.1.1'
+        required: true
 
 permissions:
-  contents: write
+  contents: read
+
+# One SVN writer, including retries and rehearsals. Never cancel a publication.
+concurrency:
+  group: wordpress-org-joshternet
+  cancel-in-progress: false
 
 jobs:
-  release:
-    name: Build WordPress.org zip and publish release
+  resolve:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      source: ${{ steps.resolve.outputs.source }}
+      approved: ${{ steps.resolve.outputs.approved }}
+      publish: ${{ steps.resolve.outputs.publish }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Resolve version
-        id: ver
+      - name: Resolve validated release input
+        id: resolve
+        env:
+          EVENT: ${{ github.event_name }}
+          MODE: ${{ inputs.mode }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ inputs.version }}"
+          approved=false
+          publish=false
+          source="$GITHUB_SHA"
+          if [ "$EVENT" = push ]; then
+            [[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1
+            version="${GITHUB_REF_NAME#v}"
+            publish=true
           else
-            VERSION="${GITHUB_REF_NAME}"
+            # Manual publication uses the reviewed workflow on main.
+            [[ "$GITHUB_REF" == refs/heads/main ]] || exit 1
+            version="$REQUESTED_VERSION"
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            case "$MODE" in
+              rehearse) [ "$version" != 0.1.1 ] || approved=true ;;
+              publish-approved-0.1.1)
+                [ "$version" = 0.1.1 ]
+                approved=true
+                publish=true ;;
+              retry-tag-release)
+                if [ "$version" != 0.1.1 ]; then
+                  source="$(gh api "repos/$GITHUB_REPOSITORY/commits/v$version" --jq .sha)"
+                fi
+                [[ "$source" =~ ^[0-9a-f]{40}$ ]] || exit 1
+                publish=true
+                [ "$version" != 0.1.1 ] || approved=true ;;
+              *) exit 1 ;;
+            esac
           fi
-          VERSION="${VERSION#v}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Resolved version ${VERSION}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          # Never rebuild the approved first release, even on a tag event.
+          [ "$version" != 0.1.1 ] || approved=true
+          printf 'version=%s\nsource=%s\napproved=%s\npublish=%s\n' \
+            "$version" "$source" "$approved" "$publish" >> "$GITHUB_OUTPUT"
 
-      - name: Verify version in plugin files
+  prepare:
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Stage exact release payload
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          APPROVED: ${{ needs.resolve.outputs.approved }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          chmod +x bin/verify-version.sh bin/build-dist-zip.sh
-          bin/verify-version.sh "${{ steps.ver.outputs.version }}"
-
-      - name: Build WordPress.org zip
-        run: bin/build-dist-zip.sh "${{ steps.ver.outputs.version }}"
-
-      - name: Upload zip artifact
+          set -euo pipefail
+          mkdir -p .release/evidence
+          bash source/bin/verify-version.sh "$VERSION"
+          # Rebuild only for source-equivalence checking in approved mode.
+          bash source/bin/build-dist-zip.sh "$VERSION"
+          if [ "$APPROVED" = true ]; then
+            gh release download v0.1.1 --repo "$GITHUB_REPOSITORY" \
+              --pattern joshternet-0.1.1.zip --dir .release
+            mv ".release/joshternet-$VERSION.zip" ".release/approved-joshternet-$VERSION.zip"
+            python3 bin/release-tools.py extract ".release/approved-joshternet-$VERSION.zip" \
+              --version "$VERSION" --approved --destination .release/stage
+            python3 bin/release-tools.py extract "source/dist/joshternet-$VERSION.zip" \
+              --version "$VERSION" --destination .release/source-build
+            # Preserve every approved plugin file; allow only directory readme messaging.
+            python3 bin/release-tools.py approved-listing .release/stage/joshternet \
+              --other .release/source-build/joshternet --version "$VERSION"
+            python3 bin/release-tools.py compare .release/stage/joshternet --other .release/source-build/joshternet
+            cp "source/dist/joshternet-$VERSION.zip" .release/
+            (cd .release && sha256sum "approved-joshternet-$VERSION.zip" > evidence/approved-package.sha256)
+            rm -rf .release/source-build
+          else
+            cp "source/dist/joshternet-$VERSION.zip" .release/
+            python3 bin/release-tools.py extract ".release/joshternet-$VERSION.zip" \
+              --version "$VERSION" --destination .release/stage
+          fi
+          python3 bin/release-tools.py compare .release/stage/joshternet \
+            --other source --source --manifest .release/evidence/files.json
+          python3 bin/release-tools.py assets .wordpress-org --other .release/stage/joshternet/readme.txt \
+            --manifest .release/evidence/assets.json
+          (cd .release && sha256sum "joshternet-$VERSION.zip" > evidence/package.sha256)
+          cp -R .wordpress-org .release/directory-assets
+      - name: Archive payload and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: joshternet-${{ steps.ver.outputs.version }}
-          path: dist/joshternet-${{ steps.ver.outputs.version }}.zip
+          name: release-payload
+          include-hidden-files: true
+          path: .release/
+          if-no-files-found: error
+          retention-days: 30
+
+  quality:
+    needs: [resolve, prepare]
+    uses: ./.github/workflows/ci.yml
+    with:
+      source_ref: ${{ needs.resolve.outputs.source }}
+      payload_artifact: release-payload
+      release_version: ${{ needs.resolve.outputs.version }}
+
+  rehearsal:
+    if: needs.resolve.outputs.publish == 'false'
+    needs: [resolve, prepare, quality]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-payload
+          path: .release
+      - run: sudo apt-get update && sudo apt-get install -y subversion
+      - name: Validate existing SVN tag
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: python3 bin/release-tools.py svn-preflight .release/stage/joshternet --version "$VERSION"
+      - name: Rehearse without credentials or SVN commit
+        uses: 10up/action-wordpress-plugin-deploy@008657da18d18e065aaaccd287fa3af53ff768a1
+        with:
+          dry-run: true
+        env:
+          SLUG: joshternet
+          VERSION: ${{ needs.resolve.outputs.version }}
+          BUILD_DIR: .release/stage/joshternet
+          ASSETS_DIR: .release/directory-assets
+      - name: Preserve proposed SVN changes
+        if: always()
+        shell: bash
+        run: |
+          if [ -d "$HOME/svn-joshternet/.svn" ]; then
+            svn status "$HOME/svn-joshternet" > .release/evidence/svn-status.txt
+            svn diff "$HOME/svn-joshternet" > .release/evidence/svn-diff.txt
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rehearsal-evidence
+          include-hidden-files: true
+          path: .release/evidence/
           if-no-files-found: error
 
-      - name: Create GitHub Release
-        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
+  publish:
+    if: needs.resolve.outputs.publish == 'true'
+    needs: [resolve, prepare, quality]
+    runs-on: ubuntu-latest
+    environment: wordpress-org
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-payload
+          path: .release
+      - run: sudo apt-get update && sudo apt-get install -y subversion
+      - name: Revalidate staged payload and immutable SVN tag
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          python3 bin/release-tools.py validate .release/stage/joshternet --version "$VERSION"
+          python3 bin/release-tools.py assets .release/directory-assets --other .release/stage/joshternet/readme.txt
+          python3 bin/release-tools.py svn-preflight .release/stage/joshternet --version "$VERSION"
+      - name: Retain an existing matching GitHub Release during recovery
+        if: needs.resolve.outputs.approved != 'true'
+        id: existing
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[].tag_name' > .release/release-tags.txt
+          if grep -Fxq "v$VERSION" .release/release-tags.txt; then
+            mkdir .release/existing-release
+            gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" \
+              --pattern "joshternet-$VERSION.zip" --dir .release/existing-release
+            python3 bin/release-tools.py extract ".release/existing-release/joshternet-$VERSION.zip" \
+              --version "$VERSION" --destination .release/existing-stage
+            python3 bin/release-tools.py compare .release/stage/joshternet --other .release/existing-stage/joshternet
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish exact tested payload to SVN
+        uses: 10up/action-wordpress-plugin-deploy@008657da18d18e065aaaccd287fa3af53ff768a1
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: joshternet
+          VERSION: ${{ needs.resolve.outputs.version }}
+          BUILD_DIR: .release/stage/joshternet
+          ASSETS_DIR: .release/directory-assets
+      - name: Verify published SVN tag
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          svn export --non-interactive "https://plugins.svn.wordpress.org/joshternet/tags/$VERSION" .release/published
+          python3 bin/release-tools.py compare .release/stage/joshternet --other .release/published
+      - name: Create GitHub Release after SVN succeeds
+        if: needs.resolve.outputs.approved != 'true' && steps.existing.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.ver.outputs.tag }}
-          name: Joshternet ${{ steps.ver.outputs.version }}
+          tag_name: v${{ needs.resolve.outputs.version }}
+          name: Joshternet ${{ needs.resolve.outputs.version }}
           body: |
-            WordPress.org install zip for **${{ steps.ver.outputs.version }}**.
-
-            Attach `joshternet-${{ steps.ver.outputs.version }}.zip` for directory review/submission or Plugins → Add New → Upload. Expands to `joshternet/`.
-          files: dist/joshternet-${{ steps.ver.outputs.version }}.zip
+            Published to WordPress.org SVN. Public availability may require directory processing and release confirmation.
+          files: .release/joshternet-${{ needs.resolve.outputs.version }}.zip
           generate_release_notes: true
           fail_on_unmatched_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

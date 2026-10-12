@@ -1,5 +1,5 @@
 === Joshternet ===
-Contributors: thewoollybully
+Contributors: TheWoollyBully
 Tags: joshternet, well-known, indieweb, identity
 Requires at least: 6.0
 Tested up to: 7.1
@@ -8,11 +8,13 @@ Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Let a WordPress site declare itself part of the Joshternet at /.well-known/josh.
+Join the Joshternet from WordPress. Joshes and non-Joshes participate equally; Josh identity is optional.
 
 == Description ==
 
-The Joshternet is a weird little web experiment with a useful idea underneath it: a website should be able to say for itself that it participates in the network.
+The Joshternet is an open network for independent websites. Everyone is welcome: Joshes and non-Joshes are equal participants, with the same standing in the network. Being a Josh is not a requirement for joining.
+
+A website should be able to say for itself that it participates in the network.
 
 This plugin publishes the RFC-JOSH-0002 declaration at the origin-root URI:
 
@@ -22,11 +24,11 @@ The smallest valid declaration is:
 
 `{"version":1}`
 
-Josh identity is optional and separate from participation. A Josh can publish:
+Josh identity is optional and separate from participation. Affirming, declining, or leaving Josh identity undeclared does not change your status in the network. A Josh can publish:
 
 `{"version":1,"josh":true}`
 
-A non-Josh can still participate and explicitly publish:
+A non-Josh can participate equally and explicitly publish:
 
 `{"version":1,"josh":false}`
 
@@ -82,11 +84,11 @@ No. WordPress serves the endpoint. That avoids depending on a writable document 
 
 = Does joining the Joshternet make me a Josh? =
 
-No. Participation and Josh identity are separate. A participant may affirm Josh identity, decline it, or leave identity undeclared.
+No. Participation and Josh identity are separate. A participant may affirm Josh identity, decline it, or leave identity undeclared. All three choices have equal status in the network.
 
 = Can a non-Josh participate? =
 
-Yes. The Joshternet exists primarily to connect Joshes, but it is not necessarily only for Joshes.
+Yes. Non-Joshes are welcome as equal participants, with the same standing as Joshes. Josh identity is optional; it does not determine membership or status in the network.
 
 = How does WordPress Multisite work? =
 
